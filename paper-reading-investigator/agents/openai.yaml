@@ -1,0 +1,7 @@
+interface:
+  display_name: "Paper Reading Investigator"
+  short_description: "Reads academic PDFs, runs OCR when needed, explains concepts with the Feynman method, and outputs a formal investigation report."
+  default_prompt: "Read this paper carefully and produce a formal investigation report."
+
+policy:
+  allow_implicit_invocation: true
