@@ -36,11 +36,13 @@ Optional user preferences:
 - target audience level: beginner / technical / expert
 - focus area: theory / implementation / reproduction / critique
 - output style: concise / standard / detailed
+- translation output: English only / Chinese translation / bilingual
 
 If the user does not specify preferences, default to:
 - audience: technical but broadly understandable
 - focus: balanced
 - output style: detailed
+- translation output: ask once before finalizing
 
 ## Required workflow
 
@@ -204,6 +206,17 @@ When requested, also generate:
 - a group meeting brief (`meeting_brief.md`)
 - a multi-paper comparison report (`comparison_report.md`)
 
+### Step 13: Auto-ask for one-click Chinese LLM translation
+If the user did not explicitly set language preference, ask exactly one concise yes/no question before ending:
+- "Would you like me to generate a one-click full Chinese LLM translation now?"
+
+If user says yes:
+1. Run one-click translation command.
+2. Return the translated file path in the final response.
+
+If user says no:
+1. Return the English report only.
+
 ## Metadata extraction rules for authors and affiliations
 
 - Prefer the title block, author block, footnotes, and first-page affiliation lines.
@@ -267,6 +280,7 @@ Typical script flow:
 5. `python scripts/build_report.py <output_dir> --with-appendix`
 6. `python scripts/build_meeting_brief.py <output_dir>` (optional)
 7. `python scripts/compare_papers.py <paper_output_dir_a> <paper_output_dir_b> --output-dir <compare_dir>` (optional)
+8. `python scripts/one_click_translate_zh.py <output_dir>` (optional, full LLM translation)
 
 ## Success condition
 

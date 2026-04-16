@@ -74,6 +74,7 @@
     │   ├── build_report.py
     │   ├── build_meeting_brief.py      # 新增：组会简报生成
     │   ├── compare_papers.py           # 新增：多论文横向比较
+    │   ├── one_click_translate_zh.py   # 新增：一键完整中文LLM翻译
     │   └── utils.py
     ├── templates/
     │   ├── paper_investigation_report.md
@@ -238,6 +239,15 @@
 
 - `meeting_brief.md`
 
+### 5.9 one_click_translate_zh.py（新增）
+
+用于把 `final_report.md` 通过 LLM 一次性完整翻译为中文版本。
+
+输出：
+
+- `final_report_zh_full.md`
+- `translation_metadata.json`
+
 ## 6. 安装依赖
 
 ### 6.1 Python 依赖
@@ -367,6 +377,7 @@ outputs/demo/
 ├── claim_evidence_alignment.json
 ├── cleaned_text.txt
 ├── final_report.md
+├── final_report_zh_full.md
 ├── meeting_brief.md
 ├── metadata.json
 ├── entity_catalog.json
@@ -374,6 +385,7 @@ outputs/demo/
 ├── raw_extracted.txt
 ├── sectioned_text.json
 ├── table_equation_index.json
+├── translation_metadata.json
 ├── figure_table_citations.json
 └── ocr/
     ├── ocr_metadata.json
@@ -398,12 +410,16 @@ outputs/demo/
 claim 与证据句的对齐矩阵及支撑强度
 - `final_report.md`  
 最终交付给用户阅读的正式报告
+- `final_report_zh_full.md`  
+一键 LLM 生成的完整中文报告
 - `meeting_brief.md`  
 用于组会汇报的简报版输出
 - `entity_catalog.json`  
 自动识别的数据集、模型、指标、硬件信息
 - `table_equation_index.json`  
 表格与公式的细粒度索引
+- `translation_metadata.json`  
+一键翻译的模型、输入输出路径与分块信息
 - `figure_table_citations.json`  
 Figure/Table 引用级分析结果
 - `ocr/ocr_metadata.json`  
@@ -565,6 +581,8 @@ python build_report.py outputs/sample --template paper_investigation_report.md
   `analyze_paper.py` 默认启发式对齐；启用 `--enable-llm-alignment` 且配置 `OPENAI_API_KEY` 后，会调用 OpenAI 做二次校准。
 - 生成更适合组会展示的简报版本  
   新增 `paper-reading-investigator/scripts/build_meeting_brief.py` + `paper-reading-investigator/templates/group_meeting_brief.md`，可直接生成 `meeting_brief.md`（Marp 友好）。
+- 一键完整中文 LLM 翻译  
+  新增 `paper-reading-investigator/scripts/one_click_translate_zh.py`，可把 `final_report.md` 全量翻译成中文并输出 `final_report_zh_full.md`。
 
 ## 18. 新增命令示例（v2）
 
@@ -591,6 +609,23 @@ python paper-reading-investigator/scripts/build_meeting_brief.py outputs/sample
 ```bash
 python paper-reading-investigator/scripts/compare_papers.py outputs/paper_a outputs/paper_b --output-dir outputs/compare_run
 ```
+
+### 18.5 一键完整中文 LLM 翻译
+
+```bash
+python paper-reading-investigator/scripts/one_click_translate_zh.py outputs/sample --model gpt-5-mini
+```
+
+输出：
+
+- `outputs/sample/final_report_zh_full.md`
+- `outputs/sample/translation_metadata.json`
+
+说明：
+
+- 需要提前设置 `OPENAI_API_KEY`
+- 保留 Markdown 结构、列表、表格与代码块
+- 以“完整翻译”为目标，不做摘要化改写
 
 ## 19. 总结
 
@@ -629,3 +664,12 @@ python scripts/build_report_zh.py outputs/sample
 - 核心结论与证据强度
 - 优点与不足
 - 可复现性风险评级与依据
+
+## 21. Skill 使用时的自动询问行为
+
+为了减少手动操作，当前 skill 已加入“自动询问”规则：
+
+- 如果用户未指定输出语言，Codex 在交付前会自动问一次：  
+  `Would you like me to generate a one-click full Chinese LLM translation now?`
+- 用户回答 `yes` 后，会自动执行一键翻译脚本并返回中文报告路径。
+- 用户回答 `no` 后，仅返回英文报告。
