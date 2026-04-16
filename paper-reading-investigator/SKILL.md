@@ -13,12 +13,18 @@ The skill must:
 - detect whether the PDF is text-based or scanned
 - run OCR if the PDF is scanned or poorly extractable
 - extract the paper structure and metadata
-- identify authors and affiliations
+- identify authors and affiliations with conservative mapping
+- extract dataset/model/metric/hardware entities
+- index table and equation signals
+- map figure/table citation mentions to local evidence contexts
 - explain the work using the Feynman technique
 - extend the explanation into implementation and reproduction guidance
+- align major claims to supporting evidence sentences
 - identify weaknesses, limitations, missing details, and risks
 - generate a concise headline title
 - produce a final formal report in a consistent format
+- optionally generate a group-meeting briefing deck
+- optionally compare multiple papers side by side
 
 ## Inputs
 
@@ -106,6 +112,7 @@ Extract the following fields as faithfully as possible:
 - hardware details if visible
 - main equations, algorithms, or pipelines
 - key tables and figures
+- extracted equation snippets with tags where possible
 
 Do not invent metadata that is not explicitly present.
 If a field is uncertain, mark it as "Not clearly stated in the paper."
@@ -191,6 +198,12 @@ Rules:
 ### Step 11: Produce the final report
 Write the final answer as a formal investigation report using the report template in `templates/paper_investigation_report.md`.
 
+### Step 12: Optional advanced outputs
+When requested, also generate:
+- a claim-evidence alignment matrix (`claim_evidence_alignment.json`)
+- a group meeting brief (`meeting_brief.md`)
+- a multi-paper comparison report (`comparison_report.md`)
+
 ## Metadata extraction rules for authors and affiliations
 
 - Prefer the title block, author block, footnotes, and first-page affiliation lines.
@@ -250,8 +263,10 @@ Typical script flow:
 1. `python scripts/detect_pdf_type.py <pdf_path>`
 2. `python scripts/run_ocr.py <pdf_path> <output_dir>` if needed
 3. `python scripts/extract_paper.py <input_pdf_or_ocr_pdf> <output_dir>`
-4. `python scripts/analyze_paper.py <output_dir>`
-5. `python scripts/build_report.py <output_dir>`
+4. `python scripts/analyze_paper.py <output_dir> --enable-llm-alignment` (optional)
+5. `python scripts/build_report.py <output_dir> --with-appendix`
+6. `python scripts/build_meeting_brief.py <output_dir>` (optional)
+7. `python scripts/compare_papers.py <paper_output_dir_a> <paper_output_dir_b> --output-dir <compare_dir>` (optional)
 
 ## Success condition
 

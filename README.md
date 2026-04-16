@@ -62,17 +62,24 @@
 
 ```text
 .
-├── analyze_paper.py              # 对抽取后的论文内容做分析
-├── build_report.py               # 用模板渲染最终报告
-├── detect_pdf_type.py            # 检测 PDF 是 digital / scanned / mixed / poor_text
-├── extract_paper.py              # 抽取正文、章节、元数据
-├── run_ocr.py                    # 对扫描版 PDF 运行 OCR
-├── utils.py                      # 公共工具函数
-├── requirements.txt              # Python 依赖
-├── paper_investigation_report.md # 报告模板
-├── methodology_notes.md          # 方法说明
-├── example_output.md             # 示例输出
-└── SKILL.md                      # 技能/工作流说明
+├── README.md
+└── paper-reading-investigator/
+    ├── SKILL.md
+    ├── requirements.txt
+    ├── scripts/
+    │   ├── detect_pdf_type.py
+    │   ├── run_ocr.py
+    │   ├── extract_paper.py
+    │   ├── analyze_paper.py
+    │   ├── build_report.py
+    │   ├── build_meeting_brief.py      # 新增：组会简报生成
+    │   ├── compare_papers.py           # 新增：多论文横向比较
+    │   └── utils.py
+    ├── templates/
+    │   ├── paper_investigation_report.md
+    │   └── group_meeting_brief.md      # 新增：简报模板
+    ├── references/methodology_notes.md
+    └── assets/example_output.md
 ```
 
 ## 5. 各脚本在做什么
@@ -210,6 +217,27 @@
 
 它是整个流程的公共基础模块。
 
+### 5.7 compare_papers.py（新增）
+
+用于把多篇论文的输出目录做横向比较，核心维度包括：
+
+- 可复现风险等级
+- claim-evidence 支撑强度分数
+- 数据集 / 模型 / 指标 / 硬件要素
+
+输出：
+
+- `comparison.json`
+- `comparison_report.md`
+
+### 5.8 build_meeting_brief.py（新增）
+
+用于从 `analysis.json` 快速生成组会可读简报（Markdown/Marp 友好）。
+
+输出：
+
+- `meeting_brief.md`
+
 ## 6. 安装依赖
 
 ### 6.1 Python 依赖
@@ -233,6 +261,7 @@ pip install -r requirements.txt
 - pydantic
 - jinja2
 - python-dotenv
+- openai（用于可选的 claim-evidence LLM 对齐）
 
 ### 6.2 OCR 依赖（可选，但推荐）
 
@@ -335,12 +364,17 @@ python build_report.py outputs/demo --template paper_investigation_report.md
 ```text
 outputs/demo/
 ├── analysis.json
+├── claim_evidence_alignment.json
 ├── cleaned_text.txt
 ├── final_report.md
+├── meeting_brief.md
 ├── metadata.json
+├── entity_catalog.json
 ├── paper_content.json
 ├── raw_extracted.txt
 ├── sectioned_text.json
+├── table_equation_index.json
+├── figure_table_citations.json
 └── ocr/
     ├── ocr_metadata.json
     └── ocr_output.pdf
@@ -360,8 +394,18 @@ outputs/demo/
 综合后的核心结构化数据
 - `analysis.json`  
 分析阶段的中间结果
+- `claim_evidence_alignment.json`  
+claim 与证据句的对齐矩阵及支撑强度
 - `final_report.md`  
 最终交付给用户阅读的正式报告
+- `meeting_brief.md`  
+用于组会汇报的简报版输出
+- `entity_catalog.json`  
+自动识别的数据集、模型、指标、硬件信息
+- `table_equation_index.json`  
+表格与公式的细粒度索引
+- `figure_table_citations.json`  
+Figure/Table 引用级分析结果
 - `ocr/ocr_metadata.json`  
 OCR 是否执行、是否成功、输出路径等信息
 
@@ -503,19 +547,52 @@ python build_report.py outputs/sample --template paper_investigation_report.md
 
 `outputs/sample/final_report.md`
 
-## 17. 后续可以怎么扩展
+## 17. 已实现的增强能力（v2）
 
-如果你要继续完善这个仓库，比较自然的方向有：
+基于你提出的 7 个方向，当前版本已经加入以下能力：
 
-- 更稳健的标题/作者/单位抽取
-- 表格与公式的精细化解析
-- 对 figures / tables 的引用级分析
-- 多篇论文横向比较
-- 自动识别数据集、模型、指标、硬件配置
-- 结合大模型做更强的 claim-evidence 对齐
-- 生成更适合组会展示的简报版本
+- 更稳健的标题/作者/单位抽取  
+  `extract_paper.py` 现在会综合首屏标题块、作者候选行、单位关键词、邮箱与对应作者线索，并输出 `author_affiliation_map` 与保守的置信注释。
+- 表格与公式的精细化解析  
+  新增 `table_equation_index.json`，包含表格候选、页码、行列估计与公式片段（含编号标签）。
+- 对 figures / tables 的引用级分析  
+  新增 `figure_table_citations.json`，统计 `Figure/Table` 引用频次、上下文证据与未解析引用。
+- 多篇论文横向比较  
+  新增 `paper-reading-investigator/scripts/compare_papers.py`，可生成 `comparison.json` 与 `comparison_report.md`。
+- 自动识别数据集、模型、指标、硬件配置  
+  在抽取阶段输出 `entity_catalog.json`，并写入 `metadata.json` / `paper_content.json`。
+- 结合大模型做更强 claim-evidence 对齐  
+  `analyze_paper.py` 默认启发式对齐；启用 `--enable-llm-alignment` 且配置 `OPENAI_API_KEY` 后，会调用 OpenAI 做二次校准。
+- 生成更适合组会展示的简报版本  
+  新增 `paper-reading-investigator/scripts/build_meeting_brief.py` + `paper-reading-investigator/templates/group_meeting_brief.md`，可直接生成 `meeting_brief.md`（Marp 友好）。
 
-## 18. 总结
+## 18. 新增命令示例（v2）
+
+### 18.1 输出带附录的正式报告（含 claim-evidence 矩阵）
+
+```bash
+python paper-reading-investigator/scripts/build_report.py outputs/sample --template paper-reading-investigator/templates/paper_investigation_report.md --with-appendix
+```
+
+### 18.2 启用大模型 claim-evidence 对齐
+
+```bash
+python paper-reading-investigator/scripts/analyze_paper.py outputs/sample --enable-llm-alignment --llm-model gpt-5-mini
+```
+
+### 18.3 生成组会简报
+
+```bash
+python paper-reading-investigator/scripts/build_meeting_brief.py outputs/sample
+```
+
+### 18.4 多论文横向比较
+
+```bash
+python paper-reading-investigator/scripts/compare_papers.py outputs/paper_a outputs/paper_b --output-dir outputs/compare_run
+```
+
+## 19. 总结
 
 Paper Reading Investigator 是一个面向单篇论文 PDF 的结构化分析工具。  
 它不追求“花哨摘要”，而是更偏向：
@@ -524,5 +601,31 @@ Paper Reading Investigator 是一个面向单篇论文 PDF 的结构化分析工
 - 可审阅
 - 可复现评估
 - 可正式输出
+- 可横向比较
+- 可组会简报化
 
 如果你经常需要看论文、拆论文、评估复现成本，或者把论文整理成正式文档，这个项目是一个很合适的基础版本。
+
+## 20. 基于英文报告生成中文精读报告
+
+在你已经生成英文报告 `final_report.md` 之后，可以直接追加这一步：
+
+```bash
+python scripts/build_report_zh.py outputs/sample
+```
+
+默认会读取：
+
+- `outputs/sample/final_report.md`
+- `outputs/sample/analysis.json`
+
+并生成：
+
+- `outputs/sample/final_report_zh.md`
+
+中文精读报告会重点给出：
+
+- 研究问题与方法
+- 核心结论与证据强度
+- 优点与不足
+- 可复现性风险评级与依据
